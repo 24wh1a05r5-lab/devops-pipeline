@@ -1,11 +1,13 @@
 # ---- build stage: install prod deps only ----
 FROM node:20-alpine AS deps
+RUN apk upgrade --no-cache
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev
 
 # ---- runtime stage: small, non-root ----
 FROM node:20-alpine
+RUN apk upgrade --no-cache
 ENV NODE_ENV=production PORT=3000
 ARG APP_VERSION=dev
 ENV APP_VERSION=${APP_VERSION}

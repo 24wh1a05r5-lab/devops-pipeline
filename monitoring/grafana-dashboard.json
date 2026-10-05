@@ -1,0 +1,15 @@
+{
+  "title": "App – Golden Signals",
+  "schemaVersion": 39,
+  "templating": { "list": [{ "name": "namespace", "type": "query", "query": "label_values(up, namespace)", "datasource": "Prometheus" }] },
+  "panels": [
+    { "type": "timeseries", "title": "Request rate", "gridPos": {"x":0,"y":0,"w":12,"h":8},
+      "targets": [{ "expr": "sum(rate(http_request_duration_seconds_count{namespace=\"$namespace\"}[5m]))" }] },
+    { "type": "timeseries", "title": "5xx error rate", "gridPos": {"x":12,"y":0,"w":12,"h":8},
+      "targets": [{ "expr": "sum(rate(http_request_duration_seconds_count{namespace=\"$namespace\",status=~\"5..\"}[5m]))" }] },
+    { "type": "timeseries", "title": "p95 latency", "gridPos": {"x":0,"y":8,"w":12,"h":8},
+      "targets": [{ "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[5m])) by (le))" }] },
+    { "type": "stat", "title": "Ready pods", "gridPos": {"x":12,"y":8,"w":12,"h":8},
+      "targets": [{ "expr": "sum(kube_pod_status_ready{namespace=\"$namespace\",condition=\"true\"})" }] }
+  ]
+}

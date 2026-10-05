@@ -1,0 +1,13 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata: { name: app-prod, namespace: argocd }
+spec:
+  project: app
+  source:
+    repoURL: https://github.com/OWNER/devops-pipeline.git
+    targetRevision: main
+    path: k8s/overlays/prod
+  destination: { server: https://kubernetes.default.svc, namespace: app-prod }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]

@@ -1,0 +1,26 @@
+name: Deploy Staging
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+
+concurrency: gitops-main
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main }
+      - name: Bump staging image tag
+        working-directory: k8s/overlays/staging
+        run: kustomize edit set image app=ghcr.io/${{ github.repository }}:${{ github.event.workflow_run.head_sha }}
+      - name: Commit
+        run: |
+          git config user.name "deploy-bot"; git config user.email "deploy-bot@users.noreply.github.com"
+          git commit -am "deploy(staging): ${{ github.event.workflow_run.head_sha }}" && git push
+      - name: Smoke test (waits for Argo CD to roll out the new version)
+        run: ./scripts/smoke-test.sh "${{ vars.STAGING_URL }}" "${{ github.event.workflow_run.head_sha }}"

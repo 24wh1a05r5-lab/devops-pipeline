@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: app-dev
+resources:
+  - ../../base
+  - namespace.yaml
+images:
+  - name: app
+    newName: devops-demo-api
+    newTag: local
+configMapGenerator:
+  - name: app-config
+    behavior: merge
+    literals: [APP_ENV=dev]
+patches:
+  - target: { kind: Deployment, name: app }
+    patch: |-
+      - { op: replace, path: /spec/replicas, value: 1 }
+      - { op: replace, path: /spec/template/spec/containers/0/resources/limits/memory, value: 128Mi }
+  - target: { kind: HorizontalPodAutoscaler, name: app }
+    patch: |-
+      - { op: replace, path: /spec/minReplicas, value: 1 }
+      - { op: replace, path: /spec/maxReplicas, value: 2 }
+  - target: { kind: Ingress, name: app }
+    patch: |-
+      - { op: replace, path: /spec/rules/0/host, value: dev.app.example.com }

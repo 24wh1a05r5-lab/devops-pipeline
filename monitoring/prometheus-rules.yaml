@@ -1,0 +1,28 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata: { name: app-alerts, namespace: monitoring, labels: { release: kube-prometheus-stack } }
+spec:
+  groups:
+    - name: app
+      rules:
+        - alert: AppDown
+          expr: up{service="app"} == 0
+          for: 2m
+          labels: { severity: critical }
+          annotations: { summary: "{{ $labels.namespace }} app is down" }
+        - alert: HighErrorRate
+          expr: |
+            sum(rate(http_request_duration_seconds_count{status=~"5.."}[5m])) by (namespace)
+              / sum(rate(http_request_duration_seconds_count[5m])) by (namespace) > 0.05
+          for: 5m
+          labels: { severity: critical }
+          annotations: { summary: "5xx rate above 5% in {{ $labels.namespace }}" }
+        - alert: HighLatencyP95
+          expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, namespace)) > 0.5
+          for: 10m
+          labels: { severity: warning }
+          annotations: { summary: "p95 latency above 500ms in {{ $labels.namespace }}" }
+        - alert: PodCrashLooping
+          expr: increase(kube_pod_container_status_restarts_total{namespace=~"app-.*"}[15m]) > 3
+          labels: { severity: warning }
+          annotations: { summary: "Pod restarting in {{ $labels.namespace }}" }

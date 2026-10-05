@@ -1,0 +1,11 @@
+region                 = "ap-south-1"
+cidr                   = "10.20.0.0/16"
+node_instance_types    = ["t3.medium"]
+node_min               = 2
+node_max               = 3
+node_desired           = 2
+node_capacity_type     = "ON_DEMAND"
+db_instance_class      = "db.t4g.small"
+db_multi_az            = false
+single_nat             = true
+db_deletion_protection = false

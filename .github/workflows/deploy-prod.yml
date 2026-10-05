@@ -1,0 +1,43 @@
+# Promotes the SAME image that is running in staging. No rebuild.
+# The `production` environment must have Required reviewers configured.
+name: Deploy Production
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag (commit SHA). Empty = whatever staging runs."
+        required: false
+
+concurrency: gitops-main
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production        # <-- manual approval gate
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: main }
+      - name: Resolve tag
+        id: tag
+        run: |
+          TAG="${{ github.event.inputs.image_tag }}"
+          [ -z "$TAG" ] && TAG=$(grep -A2 'name: ghcr.io' k8s/overlays/staging/kustomization.yaml | grep newTag | awk '{print $2}' | tr -d '"')
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Bump prod image tag
+        working-directory: k8s/overlays/prod
+        run: kustomize edit set image app=ghcr.io/${{ github.repository }}:${{ steps.tag.outputs.tag }}
+      - name: Commit
+        id: commit
+        run: |
+          git config user.name "deploy-bot"; git config user.email "deploy-bot@users.noreply.github.com"
+          git commit -am "deploy(prod): ${{ steps.tag.outputs.tag }}" && git push
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Post-deploy smoke test
+        id: smoke
+        run: ./scripts/smoke-test.sh "${{ vars.PROD_URL }}" "${{ steps.tag.outputs.tag }}"
+      - name: Automatic rollback (git revert -> Argo CD syncs previous version)
+        if: failure() && steps.smoke.outcome == 'failure'
+        run: |
+          git pull --rebase
+          git revert --no-edit "${{ steps.commit.outputs.sha }}" && git push
+          echo "::error::Smoke test failed, production reverted"

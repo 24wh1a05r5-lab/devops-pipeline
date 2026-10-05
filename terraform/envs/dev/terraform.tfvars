@@ -1,0 +1,11 @@
+region                 = "ap-south-1"
+cidr                   = "10.10.0.0/16"
+node_instance_types    = ["t3.medium"]
+node_min               = 1
+node_max               = 2
+node_desired           = 1
+node_capacity_type     = "SPOT"
+db_instance_class      = "db.t4g.micro"
+db_multi_az            = false
+single_nat             = true
+db_deletion_protection = false
